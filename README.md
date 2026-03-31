@@ -1,8 +1,10 @@
 # mainlayer-crewai
 
-CrewAI tools for [Mainlayer](https://mainlayer.fr) — payment infrastructure for AI agents.
+[![PyPI](https://img.shields.io/pypi/v/mainlayer-crewai.svg)](https://pypi.org/project/mainlayer-crewai/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Give your CrewAI agents the ability to discover paid services, check access, and pay for them autonomously — all within a crew.
+Production-ready CrewAI tools for [Mainlayer](https://mainlayer.fr) — payment infrastructure for AI agents.
+
+Build autonomous AI crews that discover, pay for, and monetize services on the Mainlayer marketplace. Enable your agents to earn revenue, access premium APIs, and coordinate multi-agent commerce workflows.
 
 ## Installation
 
@@ -10,13 +12,56 @@ Give your CrewAI agents the ability to discover paid services, check access, and
 pip install mainlayer-crewai
 ```
 
-With OpenAI support for the examples:
+With OpenAI models for the examples:
 
 ```bash
 pip install "mainlayer-crewai[openai]"
 ```
 
-## Quick Start
+With dev dependencies for testing:
+
+```bash
+pip install "mainlayer-crewai[dev]"
+```
+
+## 5-Minute Quickstart
+
+```python
+from crewai import Agent, Task, Crew
+from mainlayer_crewai import MainlayerToolkit
+import os
+
+# Initialize the toolkit with your Mainlayer credentials
+toolkit = MainlayerToolkit(
+    api_key=os.environ["MAINLAYER_API_KEY"],
+    wallet_address=os.environ["MAINLAYER_WALLET"]
+)
+
+# Create a crew that discovers and pays for a service
+researcher = Agent(
+    role="Research Agent",
+    goal="Find and acquire the best paid data services on Mainlayer",
+    backstory="An autonomous agent that discovers, evaluates, and purchases APIs.",
+    tools=toolkit.get_buyer_tools(),
+    llm="gpt-4o",
+)
+
+task = Task(
+    description="Search Mainlayer for a weather data API, check access, and pay if needed.",
+    expected_output="Resource name, ID, price, and payment status.",
+    agent=researcher,
+)
+
+crew = Crew(agents=[researcher], tasks=[task])
+result = crew.kickoff()
+print(result)
+```
+
+## Use Cases
+
+### 1. Research Crew — Autonomous Data Acquisition
+
+A crew that discovers premium data APIs, evaluates pricing, checks existing access, and autonomously purchases access when needed.
 
 ```python
 from crewai import Agent, Task, Crew
@@ -24,27 +69,121 @@ from mainlayer_crewai import MainlayerToolkit
 
 toolkit = MainlayerToolkit(api_key="ml_...", wallet_address="0x...")
 
-researcher = Agent(
-    role="Research Agent",
-    goal="Find and use the best paid AI data services",
-    backstory="An agent that autonomously discovers and pays for APIs it needs.",
-    tools=toolkit.get_buyer_tools(),
+# Scout discovers the best service
+scout = Agent(
+    role="Research Scout",
+    goal="Find the best financial data APIs",
+    backstory="Expert at finding premium data sources",
+    tools=[toolkit.get_buyer_tools()[0]],  # discover only
+    llm="gpt-4o",
+)
+
+# Analyst evaluates and purchases
+analyst = Agent(
+    role="Budget Analyst",
+    goal="Acquire the most cost-effective data service",
+    backstory="Negotiates and purchases on behalf of the research team",
+    tools=toolkit.get_buyer_tools()[1:],  # get_info, check_access, pay
+    llm="gpt-4o",
+)
+
+discover_task = Task(
+    description="Find the top 3 financial data APIs and return their resource_ids",
+    expected_output="list of resource_ids",
+    agent=scout,
+)
+
+purchase_task = Task(
+    description=f"Check if wallet 0x... has access to the APIs from scout. Pay for the cheapest one.",
+    expected_output="Payment confirmation and access token",
+    agent=analyst,
+    context=[discover_task],
+)
+
+crew = Crew(agents=[scout, analyst], tasks=[discover_task, purchase_task])
+result = crew.kickoff()
+```
+
+### 2. Monetized Crew — Agents That Earn Revenue
+
+A crew that creates and sells AI services, monitoring earnings and optimizing pricing.
+
+```python
+from crewai import Agent, Task, Crew
+from mainlayer_crewai import MainlayerToolkit
+
+toolkit = MainlayerToolkit(api_key="ml_...")
+
+# Vendor creates resources and monitors revenue
+vendor = Agent(
+    role="API Vendor Manager",
+    goal="Publish AI services on Mainlayer and maximize revenue",
+    backstory="Manages the marketplace presence of our AI services",
+    tools=toolkit.get_vendor_tools() + toolkit.get_buyer_tools(),
     llm="gpt-4o",
 )
 
 task = Task(
     description=(
-        "Find a weather data API on Mainlayer. "
-        "Check if you already have access, and pay for it if needed. "
-        "Return the resource name, ID, and payment status."
+        "Create 3 new resources for our sentiment analysis, translation, and summarization APIs. "
+        "Set pricing at $0.01, $0.02, and $0.005 per call respectively. "
+        "Then check our total earnings."
     ),
-    expected_output="Resource name, ID, price, and payment confirmation if applicable.",
-    agent=researcher,
+    expected_output="Created resource IDs and current earnings",
+    agent=vendor,
 )
 
-crew = Crew(agents=[researcher], tasks=[task])
+crew = Crew(agents=[vendor], tasks=[task])
 result = crew.kickoff()
-print(result)
+```
+
+### 3. Multi-Agent Commerce — Complete Payment Flow
+
+A crew where vendors publish services and buyers discover, evaluate, and purchase them in a coordinated workflow.
+
+```python
+from crewai import Agent, Task, Crew
+from mainlayer_crewai import MainlayerToolkit
+
+vendor_toolkit = MainlayerToolkit(api_key="ml_vendor_key")
+buyer_toolkit = MainlayerToolkit(
+    api_key="ml_buyer_key",
+    wallet_address="0xbuyer..."
+)
+
+# Vendor publishes a service
+vendor = Agent(
+    role="Service Publisher",
+    goal="Publish our services on Mainlayer",
+    tools=vendor_toolkit.get_vendor_tools(),
+    llm="gpt-4o",
+)
+
+# Buyer discovers and purchases
+buyer = Agent(
+    role="Service Buyer",
+    goal="Find and purchase the best available services",
+    tools=buyer_toolkit.get_buyer_tools(),
+    llm="gpt-4o",
+)
+
+publish_task = Task(
+    description="Create a resource called 'Advanced Analytics API' at $0.10 per call",
+    expected_output="resource_id of created resource",
+    agent=vendor,
+)
+
+purchase_task = Task(
+    description="Search for 'analytics' on Mainlayer, find the Advanced Analytics API, and purchase it",
+    expected_output="Payment confirmation",
+    agent=buyer,
+)
+
+crew = Crew(
+    agents=[vendor, buyer],
+    tasks=[publish_task, purchase_task],
+)
+result = crew.kickoff()
 ```
 
 ## Available Tools

@@ -587,3 +587,181 @@ class TestMainlayerClient:
             result = client.get("/discover")
 
         assert "error" in result
+
+
+# ---------------------------------------------------------------------------
+# MonetizedCrew
+# ---------------------------------------------------------------------------
+
+
+class TestMonetizedCrew:
+    def test_monetized_crew_extends_crew(self) -> None:
+        from crewai import Agent, Task
+        from mainlayer_crewai import MonetizedCrew
+
+        agent = Agent(role="test", goal="test", backstory="test", llm="gpt-4o")
+        task = Task(description="test", expected_output="test", agent=agent)
+
+        crew = MonetizedCrew(agents=[agent], tasks=[task], api_key="ml_test")
+        assert hasattr(crew, "publish_output")
+        assert hasattr(crew, "check_earnings")
+
+    def test_publish_output_requires_content(self) -> None:
+        from crewai import Agent, Task
+        from mainlayer_crewai import MonetizedCrew
+
+        agent = Agent(role="test", goal="test", backstory="test", llm="gpt-4o")
+        task = Task(description="test", expected_output="test", agent=agent)
+
+        crew = MonetizedCrew(agents=[agent], tasks=[task], api_key="ml_test")
+
+        with pytest.raises(ValueError, match="No output to publish"):
+            crew.publish_output(
+                name="Test Resource", price_usd=0.01, fee_model="one_time"
+            )
+
+    def test_publish_output_with_explicit_output(self) -> None:
+        from crewai import Agent, Task
+        from mainlayer_crewai import MonetizedCrew
+
+        agent = Agent(role="test", goal="test", backstory="test", llm="gpt-4o")
+        task = Task(description="test", expected_output="test", agent=agent)
+
+        crew = MonetizedCrew(agents=[agent], tasks=[task], api_key="ml_test")
+
+        with patch("mainlayer_crewai.monetized_crew.MainlayerClient.post") as mock_post:
+            mock_post.return_value = SAMPLE_CREATED_RESOURCE
+            resource_id = crew.publish_output(
+                name="Test Resource",
+                price_usd=0.01,
+                fee_model="one_time",
+                output="Test output content",
+            )
+
+        assert resource_id == "res_my_api_003"
+
+    def test_publish_output_captures_payload(self) -> None:
+        from crewai import Agent, Task
+        from mainlayer_crewai import MonetizedCrew
+
+        agent = Agent(role="test", goal="test", backstory="test", llm="gpt-4o")
+        task = Task(description="test", expected_output="test", agent=agent)
+
+        crew = MonetizedCrew(agents=[agent], tasks=[task], api_key="ml_test")
+
+        captured_payload: dict = {}
+
+        def mock_post(path: str, payload: dict) -> Any:
+            captured_payload.update(payload)
+            return SAMPLE_CREATED_RESOURCE
+
+        with patch(
+            "mainlayer_crewai.monetized_crew.MainlayerClient.post", side_effect=mock_post
+        ):
+            crew.publish_output(
+                name="Test Resource",
+                price_usd=0.05,
+                fee_model="pay_per_call",
+                description="A test resource",
+                output="Test output",
+            )
+
+        assert captured_payload["name"] == "Test Resource"
+        assert captured_payload["price_usd"] == 0.05
+        assert captured_payload["fee_model"] == "pay_per_call"
+        assert captured_payload["description"] == "A test resource"
+
+    def test_check_earnings_returns_analytics(self) -> None:
+        from crewai import Agent, Task
+        from mainlayer_crewai import MonetizedCrew
+
+        agent = Agent(role="test", goal="test", backstory="test", llm="gpt-4o")
+        task = Task(description="test", expected_output="test", agent=agent)
+
+        crew = MonetizedCrew(agents=[agent], tasks=[task], api_key="ml_test")
+
+        earnings_data = {
+            "total_earned_usd": 42.50,
+            "transaction_count": 15,
+            "top_resources": ["res_1", "res_2"],
+        }
+
+        with patch(
+            "mainlayer_crewai.monetized_crew.MainlayerClient.get",
+            return_value=earnings_data,
+        ):
+            result = crew.check_earnings()
+
+        assert result["total_earned_usd"] == 42.50
+        assert result["transaction_count"] == 15
+
+    def test_check_earnings_raises_on_error(self) -> None:
+        from crewai import Agent, Task
+        from mainlayer_crewai import MonetizedCrew
+
+        agent = Agent(role="test", goal="test", backstory="test", llm="gpt-4o")
+        task = Task(description="test", expected_output="test", agent=agent)
+
+        crew = MonetizedCrew(agents=[agent], tasks=[task], api_key="ml_test")
+
+        with patch(
+            "mainlayer_crewai.monetized_crew.MainlayerClient.get",
+            return_value={"error": "Unauthorized"},
+        ):
+            with pytest.raises(RuntimeError, match="Failed to fetch earnings"):
+                crew.check_earnings()
+
+
+# ---------------------------------------------------------------------------
+# Integration tests (end-to-end workflows)
+# ---------------------------------------------------------------------------
+
+
+class TestIntegration:
+    def test_toolkit_discovery_flow(self) -> None:
+        """Test the common flow: discover → get_info → check_access → pay."""
+        toolkit = MainlayerToolkit(api_key=API_KEY, wallet_address=WALLET)
+
+        discover_tool = [t for t in toolkit.get_buyer_tools() if t.name == "discover_mainlayer_resources"][0]
+        get_info_tool = [t for t in toolkit.get_buyer_tools() if t.name == "get_mainlayer_resource_info"][0]
+        check_tool = [t for t in toolkit.get_buyer_tools() if t.name == "check_mainlayer_access"][0]
+        pay_tool = [t for t in toolkit.get_buyer_tools() if t.name == "pay_for_mainlayer_resource"][0]
+
+        # Patch all tools
+        with patch("mainlayer_crewai.tools.discover.MainlayerClient.get", return_value=SAMPLE_RESOURCES):
+            with patch("mainlayer_crewai.tools.get_info.MainlayerClient.get", return_value=SAMPLE_RESOURCE_DETAIL):
+                with patch("mainlayer_crewai.tools.check_access.MainlayerClient.get", return_value=SAMPLE_ENTITLEMENT_NO_ACCESS):
+                    with patch("mainlayer_crewai.tools.pay.MainlayerClient.post", return_value=SAMPLE_PAYMENT):
+                        # Discover
+                        discovery = discover_tool._run(query="weather")
+                        assert "OpenWeather Pro" in discovery
+
+                        # Get info
+                        info = get_info_tool._run(resource_id="res_weather_001")
+                        assert "OpenWeather Pro" in info
+
+                        # Check access (initially no)
+                        access = check_tool._run(resource_id="res_weather_001", payer_wallet=WALLET)
+                        assert "false" in access.lower() or "no_access" in access.lower()
+
+                        # Pay for access
+                        payment = pay_tool._run(resource_id="res_weather_001", payer_wallet=WALLET)
+                        assert "confirmed" in payment.lower() or "txn_" in payment
+
+    def test_vendor_creation_flow(self) -> None:
+        """Test vendor flow: create resource."""
+        toolkit = MainlayerToolkit(api_key=API_KEY)
+
+        create_tool = toolkit.get_vendor_tools()[0]
+
+        with patch("mainlayer_crewai.tools.create.MainlayerClient.post", return_value=SAMPLE_CREATED_RESOURCE):
+            result = create_tool._run(
+                name="My Sentiment API",
+                description="Text sentiment analysis",
+                type="api",
+                fee_model="pay_per_call",
+                price=0.005,
+            )
+
+        assert "My Sentiment API" in result
+        assert "res_my_api_003" in result
