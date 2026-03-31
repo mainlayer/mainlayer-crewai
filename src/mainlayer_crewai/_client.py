@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 
 import httpx
 
-DEFAULT_BASE_URL = "https://api.mainlayer.xyz"
+DEFAULT_BASE_URL = "https://api.mainlayer.fr"
 DEFAULT_TIMEOUT = 30
 
 

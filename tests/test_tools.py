@@ -23,7 +23,7 @@ from mainlayer_crewai import (
 
 API_KEY = "ml_test_key"
 WALLET = "0xdeadbeef"
-BASE_URL = "https://api.mainlayer.xyz"
+BASE_URL = "https://api.mainlayer.fr"
 
 SAMPLE_RESOURCES = [
     {
@@ -543,7 +543,7 @@ class TestMainlayerClient:
             mock_cls.return_value.__enter__.return_value = mock_http
             mock_http.get.return_value = mock_resp
 
-            client = MainlayerClient(api_key="ml_test", base_url="https://api.mainlayer.xyz")
+            client = MainlayerClient(api_key="ml_test", base_url="https://api.mainlayer.fr")
             client.get("/discover")
 
         call_kwargs = mock_http.get.call_args
@@ -567,7 +567,7 @@ class TestMainlayerClient:
             mock_cls.return_value.__enter__.return_value = mock_http
             mock_http.get.return_value = mock_resp
 
-            client = MainlayerClient(api_key="ml_test", base_url="https://api.mainlayer.xyz")
+            client = MainlayerClient(api_key="ml_test", base_url="https://api.mainlayer.fr")
             result = client.get("/discover")
 
         assert "error" in result
@@ -583,7 +583,7 @@ class TestMainlayerClient:
             mock_cls.return_value.__enter__.return_value = mock_http
             mock_http.get.side_effect = httpx.RequestError("Connection refused")
 
-            client = MainlayerClient(api_key="ml_test", base_url="https://api.mainlayer.xyz")
+            client = MainlayerClient(api_key="ml_test", base_url="https://api.mainlayer.fr")
             result = client.get("/discover")
 
         assert "error" in result

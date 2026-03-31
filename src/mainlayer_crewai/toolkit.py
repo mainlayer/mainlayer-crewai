@@ -49,7 +49,7 @@ class MainlayerToolkit:
         self,
         api_key: str,
         wallet_address: Optional[str] = None,
-        base_url: str = "https://api.mainlayer.xyz",
+        base_url: str = "https://api.mainlayer.fr",
     ) -> None:
         """Initialise the toolkit.
 

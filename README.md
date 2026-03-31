@@ -1,6 +1,6 @@
 # mainlayer-crewai
 
-CrewAI tools for [Mainlayer](https://mainlayer.xyz) — payment infrastructure for AI agents.
+CrewAI tools for [Mainlayer](https://mainlayer.fr) — payment infrastructure for AI agents.
 
 Give your CrewAI agents the ability to discover paid services, check access, and pay for them autonomously — all within a crew.
 
@@ -67,7 +67,7 @@ from mainlayer_crewai import MainlayerToolkit
 toolkit = MainlayerToolkit(
     api_key="ml_...",
     wallet_address="0x...",        # used as payer_wallet in buyer tools
-    base_url="https://api.mainlayer.xyz",  # override for testing
+    base_url="https://api.mainlayer.fr",  # override for testing
 )
 
 tools = toolkit.get_tools()         # all 5 tools
@@ -204,7 +204,7 @@ pytest tests/ -v
 
 ## Authentication
 
-Get your API key from [mainlayer.xyz](https://mainlayer.xyz). Keys start with `ml_`.
+Get your API key from [mainlayer.fr](https://mainlayer.fr). Keys start with `ml_`.
 
 Set it as an environment variable and read it at runtime:
 
@@ -220,6 +220,6 @@ toolkit = MainlayerToolkit(
 
 ## Links
 
-- [Mainlayer](https://mainlayer.xyz)
-- [Documentation](https://docs.mainlayer.xyz)
+- [Mainlayer](https://mainlayer.fr)
+- [Documentation](https://docs.mainlayer.fr)
 - [Issues](https://github.com/mainlayer/mainlayer-crewai/issues)

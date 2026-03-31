@@ -56,7 +56,7 @@ class CreateResourceTool(BaseTool):
 
     api_key: str = Field(..., description="Mainlayer API key")
     base_url: str = Field(
-        default="https://api.mainlayer.xyz",
+        default="https://api.mainlayer.fr",
         description="Mainlayer API base URL",
     )
 

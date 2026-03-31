@@ -9,7 +9,7 @@ description = "CrewAI tools for Mainlayer — payment infrastructure for AI agen
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
-authors = [{ name = "Mainlayer", email = "hello@mainlayer.xyz" }]
+authors = [{ name = "Mainlayer", email = "hello@mainlayer.fr" }]
 keywords = ["crewai", "ai", "agents", "payments", "mainlayer"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -35,9 +35,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://mainlayer.xyz"
+Homepage = "https://mainlayer.fr"
 Repository = "https://github.com/mainlayer/mainlayer-crewai"
-Documentation = "https://docs.mainlayer.xyz"
+Documentation = "https://docs.mainlayer.fr"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mainlayer_crewai"]
